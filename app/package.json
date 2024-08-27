@@ -39,6 +39,7 @@
     "@nuxtjs/color-mode": "^3.4.1",
     "@pinia/nuxt": "^0.5.1",
     "@prisma/client": "^5.17.0",
+    "@types/jsonwebtoken": "^9.0.6",
     "@types/node": "^22.2.0",
     "@unocss/eslint-config": "^0.60.0",
     "@unocss/nuxt": "^0.60.0",
@@ -47,13 +48,16 @@
     "consola": "^3.2.3",
     "eslint": "^9.2.0",
     "eslint-plugin-format": "^0.1.1",
+    "jsonwebtoken": "^9.0.2",
     "nuxt": "^3.11.2",
+    "nuxt-auth-utils": "^0.3.2",
     "pinia": "^2.1.7",
     "prisma": "^5.18.0",
     "prisma-dbml-generator": "^0.12.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.5.4",
     "unocss": "^0.61.9",
-    "vue-tsc": "^2.0.17"
+    "vue-tsc": "^2.0.17",
+    "zod": "^3.23.8"
   }
 }

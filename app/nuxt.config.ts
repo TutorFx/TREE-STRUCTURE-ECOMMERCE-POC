@@ -1,5 +1,14 @@
-// https://nuxt.com/docs/api/configuration/nuxt-config
+import process from 'node:process'
+
 export default defineNuxtConfig({
+
+  runtimeConfig: {
+    JWT_ACCESS_SECRET: process.env.JWT_ACCESS_SECRET,
+    JWT_REFRESH_SECRET: process.env.JWT_REFRESH_SECRET,
+    public: {
+      NUXT_SESSION_PASSWORD: process.env.NUXT_SESSION_PASSWORD,
+    },
+  },
 
   alias: {
     '.prisma/client/index-browser':
@@ -21,6 +30,7 @@ export default defineNuxtConfig({
     '@nuxtjs/color-mode',
     '@vite-pwa/nuxt',
     '@nuxt/eslint',
+    'nuxt-auth-utils',
   ],
 
   css: [
