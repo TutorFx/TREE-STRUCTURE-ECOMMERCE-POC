@@ -8,12 +8,19 @@ import { AuthenticationCookiesSchema, AuthenticationSignSchema, token } from '~/
 import { ZClass } from '~/utils/zod'
 
 declare module 'jsonwebtoken' {
-  export interface UserIDJwtPayload extends jwt.JwtPayload {
+  export type UserIDJwtPayload = jwt.JwtPayload & {
     userId: string
   }
 }
 
-const prisma = new PrismaClient()
+let _prisma: PrismaClient
+
+export const usePrisma = () => {
+  if (!_prisma) {
+    _prisma = new PrismaClient()
+  }
+  return _prisma
+}
 
 export class Validator {
   private _event: H3Event
@@ -23,7 +30,7 @@ export class Validator {
     this._event = event
   }
 
-  private unpackTokens(): AuthenticationCookiesController {
+  decodeTokens(): IAuthenticationCookies {
     const cookie = getCookie(this._event, 'tokens')
 
     if (!cookie) {
@@ -33,7 +40,12 @@ export class Validator {
       })
     }
 
-    const decoded = JSON.parse(atob(cookie)) as IAuthenticationCookies
+    return JSON.parse(atob(cookie)) as IAuthenticationCookies
+  }
+
+  private unpackTokens(): AuthenticationCookiesController {
+    const decoded = this.decodeTokens()
+
     this._tokens = new AuthenticationCookiesController(decoded, this._event)
     return this._tokens
   }
@@ -75,7 +87,7 @@ export class Auth {
     }
 
     return jwt.sign(accessTokenData, config.JWT_ACCESS_SECRET, {
-      expiresIn: 60,
+      expiresIn: 10,
     })
   }
 
@@ -98,7 +110,17 @@ export class Auth {
     }, this._event)
   }
 
+  async getUser(id: string) {
+    const prisma = usePrisma()
+    return prisma.user.findUnique({
+      where: {
+        id
+      }
+    })
+  }
+
   async login(data: ILogin) {
+    const prisma = usePrisma()
     const user = await prisma.user.findUnique({
       where: {
         email: data.email,
@@ -142,16 +164,31 @@ export class Auth {
         return 'teste'
       }
     }
-    finally {
-      refreshToken = null
-    }
 
     try {
       accessToken = this._validator.accessToken() ?? null
     }
     catch (e) {
-      if (e instanceof jwt.TokenExpiredError) {
-        return 'teste'
+      if (refreshToken && (e instanceof jwt.TokenExpiredError)) {
+        const decodedTokens = this._validator.decodeTokens()
+        const user = await this.getUser(refreshToken.id)
+
+        if (!user) {
+          return sendError(
+            this._event,
+            createError({
+              statusCode: 403,
+              statusMessage: 'error.user.403',
+            }),
+          )
+        }
+        
+        const controller = new AuthenticationCookiesController({
+          refreshToken: decodedTokens.refreshToken,
+          accessToken: this.generateAccessToken(user),
+        }, this._event)
+
+        return controller.packTokens()
       }
     }
 
