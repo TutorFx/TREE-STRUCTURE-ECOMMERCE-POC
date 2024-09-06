@@ -1,4 +1,4 @@
-import { AuthenticationCookiesSchema, AuthenticationSignSchema } from '../schemas/auth'
+import { AuthenticationCookiesSchema } from '../schemas/auth'
 import type { IAuthenticationCookies } from '~/types/schemas/auth'
 
 export class AuthenticationCookies extends ZClass(AuthenticationCookiesSchema) {

@@ -4,14 +4,8 @@ import jwt from 'jsonwebtoken'
 import type { H3Event } from 'h3'
 
 import type { IAccessToken, IAccessTokenJwtPayload, IAuthenticationCookies, ILogin, IRefreshToken, IRefreshTokenJwtPayload } from '~/types/schemas/auth'
-import { AuthenticationCookiesSchema, AuthenticationSignSchema, token } from '~/utils/schemas/auth'
+import { AuthenticationCookiesSchema } from '~/utils/schemas/auth'
 import { ZClass } from '~/utils/zod'
-
-declare module 'jsonwebtoken' {
-  export type UserIDJwtPayload = jwt.JwtPayload & {
-    userId: string
-  }
-}
 
 let _prisma: PrismaClient
 
