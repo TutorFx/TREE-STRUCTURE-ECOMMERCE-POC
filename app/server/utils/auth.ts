@@ -15,7 +15,7 @@ declare module 'jsonwebtoken' {
 
 let _prisma: PrismaClient
 
-export const usePrisma = () => {
+export function usePrisma() {
   if (!_prisma) {
     _prisma = new PrismaClient()
   }
@@ -114,8 +114,8 @@ export class Auth {
     const prisma = usePrisma()
     return prisma.user.findUnique({
       where: {
-        id
-      }
+        id,
+      },
     })
   }
 
@@ -182,7 +182,7 @@ export class Auth {
             }),
           )
         }
-        
+
         const controller = new AuthenticationCookiesController({
           refreshToken: decodedTokens.refreshToken,
           accessToken: this.generateAccessToken(user),
