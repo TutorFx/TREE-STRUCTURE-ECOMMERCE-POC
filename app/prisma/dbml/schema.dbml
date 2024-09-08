@@ -10,7 +10,7 @@ Table User {
   password String [not null]
   firstname String
   lastname String
-  role Role [not null]
+  role Role [default: 'USER']
 }
 
 Enum Role {

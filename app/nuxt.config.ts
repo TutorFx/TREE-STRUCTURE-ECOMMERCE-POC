@@ -1,4 +1,5 @@
 import process from 'node:process'
+import type { Nitro } from 'nitropack'
 
 export default defineNuxtConfig({
 

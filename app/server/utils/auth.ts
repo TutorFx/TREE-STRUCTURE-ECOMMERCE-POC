@@ -1,28 +1,16 @@
 import type { User } from '@prisma/client'
-import { PrismaClient } from '@prisma/client'
 import jwt from 'jsonwebtoken'
 import type { H3Event } from 'h3'
 
-import type { IAccessToken, IAccessTokenJwtPayload, IAuthenticationCookies, ILogin, IRefreshToken, IRefreshTokenJwtPayload } from '~/types/schemas/auth'
-import { AuthenticationCookiesSchema } from '~/utils/schemas/auth'
+import UserService from './Services/UserService'
+import type { IAccessToken, IAccessTokenJwtPayload, IAuthenticationCookies, ILogin, IRefreshToken, IRefreshTokenJwtPayload, IRegister } from '~/types/schemas/auth'
+import { AuthenticationCookiesSchema, LoginSchema, RegisterSchema } from '~/utils/schemas/auth'
 import { ZClass } from '~/utils/zod'
 
-let _prisma: PrismaClient
-
-export function usePrisma() {
-  if (!_prisma) {
-    _prisma = new PrismaClient()
-  }
-  return _prisma
-}
-
 export class Validator {
-  private _event: H3Event
   private _tokens: AuthenticationCookiesController | null = null
 
-  constructor(event: H3Event) {
-    this._event = event
-  }
+  constructor(private _event: H3Event) {}
 
   decodeTokens(): IAuthenticationCookies {
     const cookie = getCookie(this._event, 'tokens')
@@ -63,12 +51,12 @@ export class Validator {
 }
 
 export class Auth {
-  private _event: H3Event
   private _validator: Validator
-
-  constructor(event: H3Event) {
-    this._event = event
-    this._validator = new Validator(event)
+  constructor(
+    private _event: H3Event,
+    private _userService: UserService = new UserService(),
+  ) {
+    this._validator = new Validator(this._event)
   }
 
   private generateAccessToken(user: User): string {
@@ -81,7 +69,7 @@ export class Auth {
     }
 
     return jwt.sign(accessTokenData, config.JWT_ACCESS_SECRET, {
-      expiresIn: 10,
+      expiresIn: 600,
     })
   }
 
@@ -104,24 +92,62 @@ export class Auth {
     }, this._event)
   }
 
-  async getUser(id: string) {
-    const prisma = usePrisma()
-    return prisma.user.findUnique({
-      where: {
-        id,
-      },
-    })
+  async login(data: ILogin) {
+    const parsed = LoginSchema.safeParse(data)
+
+    if (!parsed.success) {
+      return sendError(
+        this._event,
+        createError({
+          statusCode: 403,
+          statusMessage: 'error.user.403',
+        }),
+      )
+    }
+
+    const userInstance = await this._userService.findByEmail(parsed.data.email)
+
+    if (!userInstance) {
+      return sendError(
+        this._event,
+        createError({
+          statusCode: 401,
+          statusMessage: 'error.user.401',
+        }),
+      )
+    }
+
+    if (!await VerifyPassword(parsed.data.password, userInstance.user.password)) {
+      return sendError(
+        this._event,
+        createError({
+          statusCode: 401,
+          statusMessage: 'error.user.401',
+        }),
+      )
+    }
+
+    const cookies = this.generateTokens(userInstance.user)
+
+    cookies.packTokens()
   }
 
-  async login(data: ILogin) {
-    const prisma = usePrisma()
-    const user = await prisma.user.findUnique({
-      where: {
-        email: data.email,
-      },
-    })
+  async register(data: IRegister) {
+    const parsed = RegisterSchema.safeParse(data)
 
-    if (!user) {
+    if (!parsed.success) {
+      return sendError(
+        this._event,
+        createError({
+          statusCode: 403,
+          statusMessage: 'error.user.403',
+        }),
+      )
+    }
+
+    const userInstance = await this._userService.register(parsed.data)
+
+    if (!userInstance) {
       return sendError(
         this._event,
         createError({
@@ -131,17 +157,7 @@ export class Auth {
       )
     }
 
-    if (data.password !== user.password) {
-      return sendError(
-        this._event,
-        createError({
-          statusCode: 401,
-          statusMessage: 'error.user.401',
-        }),
-      )
-    }
-
-    const cookies = this.generateTokens(user)
+    const cookies = this.generateTokens(userInstance.user)
 
     cookies.packTokens()
   }
@@ -155,7 +171,13 @@ export class Auth {
     }
     catch (e) {
       if (e instanceof jwt.TokenExpiredError) {
-        return 'teste'
+        return sendError(
+          this._event,
+          createError({
+            statusCode: 401,
+            statusMessage: 'error.user.401',
+          }),
+        )
       }
     }
 
@@ -165,9 +187,9 @@ export class Auth {
     catch (e) {
       if (refreshToken && (e instanceof jwt.TokenExpiredError)) {
         const decodedTokens = this._validator.decodeTokens()
-        const user = await this.getUser(refreshToken.id)
+        const userInstance = await this._userService.findById(refreshToken.id)
 
-        if (!user) {
+        if (!userInstance) {
           return sendError(
             this._event,
             createError({
@@ -179,10 +201,15 @@ export class Auth {
 
         const controller = new AuthenticationCookiesController({
           refreshToken: decodedTokens.refreshToken,
-          accessToken: this.generateAccessToken(user),
+          accessToken: this.generateAccessToken(userInstance.user),
         }, this._event)
 
-        return controller.packTokens()
+        controller.packTokens()
+        const accessTokenRefreshed = this._validator.accessToken()
+
+        if (accessTokenRefreshed) {
+          accessToken = accessTokenRefreshed
+        }
       }
     }
 
@@ -194,11 +221,8 @@ export class Auth {
 }
 
 export class AuthenticationCookiesController extends ZClass(AuthenticationCookiesSchema) {
-  private _event: H3Event
-
-  constructor(data: IAuthenticationCookies, event: H3Event) {
+  constructor(data: IAuthenticationCookies, private _event: H3Event) {
     super(data)
-    this._event = event
   }
 
   packTokens(): void {
