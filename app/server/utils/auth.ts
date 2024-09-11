@@ -8,7 +8,7 @@ import { AuthenticationCookiesSchema, LoginSchema, RegisterSchema } from '~/util
 import { ZClass } from '~/utils/zod'
 
 export class Validator {
-  private _tokens: AuthenticationCookiesController | null = null
+  private _tokens: TokenEntity | null = null
 
   constructor(private _event: H3Event) {}
 
@@ -25,10 +25,10 @@ export class Validator {
     return JSON.parse(atob(cookie)) as IAuthenticationCookies
   }
 
-  private unpackTokens(): AuthenticationCookiesController {
+  private unpackTokens(): TokenEntity {
     const decoded = this.decodeTokens()
 
-    this._tokens = new AuthenticationCookiesController(decoded, this._event)
+    this._tokens = new TokenEntity(decoded, this._event)
     return this._tokens
   }
 
@@ -51,11 +51,12 @@ export class Validator {
 }
 
 export class Auth {
-  private _validator: Validator
+  private _validator
+  private _userService
   constructor(
     private _event: H3Event,
-    private _userService: UserService = new UserService(),
   ) {
+    this._userService = new UserService(this._event)
     this._validator = new Validator(this._event)
   }
 
@@ -85,8 +86,8 @@ export class Auth {
     })
   }
 
-  private generateTokens(user: User): AuthenticationCookiesController {
-    return new AuthenticationCookiesController({
+  private generateTokens(user: User): TokenEntity {
+    return new TokenEntity({
       refreshToken: this.generateRefreshToken(user),
       accessToken: this.generateAccessToken(user),
     }, this._event)
@@ -199,7 +200,7 @@ export class Auth {
           )
         }
 
-        const controller = new AuthenticationCookiesController({
+        const controller = new TokenEntity({
           refreshToken: decodedTokens.refreshToken,
           accessToken: this.generateAccessToken(userInstance.user),
         }, this._event)
@@ -220,7 +221,7 @@ export class Auth {
   }
 }
 
-export class AuthenticationCookiesController extends ZClass(AuthenticationCookiesSchema) {
+export class TokenEntity extends ZClass(AuthenticationCookiesSchema) {
   constructor(data: IAuthenticationCookies, private _event: H3Event) {
     super(data)
   }

@@ -1,15 +1,26 @@
-import type { Prisma, PrismaClient, User } from '@prisma/client'
+import type { PrismaClient, User } from '@prisma/client'
+import { Prisma } from '@prisma/client'
+import type { H3Event } from 'h3'
 import { UserController } from '../Controllers/UserController'
 
 export class UserRepository {
   constructor(
+    private _event: H3Event,
     private prismaClient: PrismaClient = usePrisma(),
   ) { }
 
   public async create(data: Prisma.UserCreateInput): Promise<UserController> {
-    return new UserController(this, await this.prismaClient.user.create({
+    const userData = await this.prismaClient.user.create({
       data,
-    }))
+    }).catch((e) => {
+      if (e instanceof Prisma.PrismaClientKnownRequestError) {
+        if (e.code === 'P2002') {
+          //
+        }
+      }
+      throw e
+    })
+    return new UserController(this, userData)
   };
 
   public async register(data: Prisma.UserCreateInput): Promise<UserController> {
