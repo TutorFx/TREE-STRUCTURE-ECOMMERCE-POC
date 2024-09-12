@@ -26,16 +26,17 @@ export default defineNuxtConfig({
 
   modules: [
     '@vueuse/nuxt',
-    '@unocss/nuxt',
     '@pinia/nuxt',
     '@nuxtjs/color-mode',
     '@vite-pwa/nuxt',
     '@nuxt/eslint',
     'nuxt-auth-utils',
+    '@nuxtjs/tailwindcss',
+    'shadcn-nuxt',
   ],
 
   css: [
-    '@unocss/reset/tailwind.css',
+    './assets/css/tailwind.css',
   ],
 
   eslint: {
