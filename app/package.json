@@ -28,7 +28,7 @@
   },
   "config": {
     "commitizen": {
-      "path": "cz-conventional-changelog"
+      "path": "./node_modules/@digitalroute/cz-conventional-changelog-for-jira"
     }
   },
   "dependencies": {
@@ -37,6 +37,7 @@
   },
   "devDependencies": {
     "@antfu/eslint-config": "^2.25.0",
+    "@digitalroute/cz-conventional-changelog-for-jira": "^8.0.1",
     "@iconify-json/carbon": "^1.1.32",
     "@iconify-json/twemoji": "^1.1.15",
     "@nuxt/devtools": "^1.3.1",
